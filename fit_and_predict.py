@@ -1,7 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import os
 
-import torch
 import spacy
 
 import string
@@ -50,7 +49,7 @@ class ClassificatorModel:
         self.embeddings: list = []
         self.labels: list = []
         self.grouped_files: dict = {}
-        self.threshold: torch.Tensor = torch.Tensor([threshold])
+        self.threshold: int | float = threshold
         self.dictionary_length: int = -1
         self.knn = NearestNeighbors(n_neighbors=neighbors_amount, metric='cosine')
 
@@ -98,13 +97,20 @@ class ClassificatorModel:
         # print(knn.n_samples_fit_)
         predicted_labels = []
         for new_embedding in new_embeddings:
+            classes_counter = {}
             distances, indices = self.knn.kneighbors([new_embedding])
-            print(distances, indices)
-            if distances[0][0] > self.threshold:
-                predicted_labels.append("Unknown")
-            else:
-                predicted_label = self.labels[indices[0][0]]
+
+            for i, distance in enumerate(distances[0]):
+                if distance <= self.threshold:
+                    current_label = self.labels[indices[0][i]]
+                    classes_counter[current_label] = classes_counter.get(current_label, 0) + 1
+
+            if classes_counter:
+                predicted_label = max(classes_counter, key=classes_counter.get)
                 predicted_labels.append(predicted_label)
+            else:
+                predicted_labels.append("Unknown")
+
         return predicted_labels
 
     def score(self, predicted: list[str], true: list[str]) -> None | str:
@@ -131,14 +137,14 @@ class ClassificatorModel:
             return f'Доля верно предсказанных классов: {round(counter / pred_length * 100, 2)}%'
 
 
-model = ClassificatorModel("cointegrated/rubert-tiny2", 0.2)
-
-model.fit("texts_by_classes")
-
-predicted = model.predict("texts_to_classify")
-
-print(predicted)
-
-true = ['News', 'DescriptionTexts', 'DescriptionTexts', 'City', 'DescriptionTexts', 'News']
-
-print(model.score(predicted, true))
+# model = ClassificatorModel("cointegrated/rubert-tiny2", 0.4, 3)
+#
+# model.fit("texts_by_classes")
+#
+# predicted = model.predict("texts_to_classify")
+#
+# print(predicted)
+#
+# true = ['News', 'DescriptionTexts', 'DescriptionTexts', 'DescriptionTexts', 'DescriptionTexts', 'News']
+#
+# print(model.score(predicted, true))
