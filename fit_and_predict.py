@@ -1,3 +1,4 @@
+import torch
 from sentence_transformers import SentenceTransformer
 import os
 
@@ -13,7 +14,7 @@ stop_words = nlp.Defaults.stop_words
 punctuations = string.punctuation
 
 
-def spacy_tokenizer(sentence: str) -> str:
+def text_preprocess(sentence: str) -> str:
     """
     :param sentence: текст для предобработки
     :return: текст, состоящий из слов в начальной форме,
@@ -21,11 +22,11 @@ def spacy_tokenizer(sentence: str) -> str:
     """
     doc = nlp(sentence)
 
-    my_tokens = [word.lemma_.lower().strip() for word in doc]
+    my_tokens: list = [word.lemma_.lower().strip() for word in doc]
 
-    my_tokens = [word for word in my_tokens if word not in stop_words and word not in punctuations]
+    my_tokens: list = [word for word in my_tokens if word not in stop_words and word not in punctuations]
 
-    sentence = " ".join(my_tokens)
+    sentence: str = " ".join(my_tokens)
 
     return sentence
 
@@ -61,13 +62,13 @@ class ClassificatorModel:
         :return: None.
         """
         for label in os.listdir(path_to_dir):
-            label_dir = os.path.join(path_to_dir, label)
+            label_dir: str = os.path.join(path_to_dir, label)
             if os.path.isdir(label_dir):
                 for filename in os.listdir(label_dir):
-                    filepath = os.path.join(label_dir, filename)
+                    filepath: str = os.path.join(label_dir, filename)
                     try:
                         with open(filepath, 'r', encoding='utf-8') as f:
-                            text = spacy_tokenizer(f.read())
+                            text = text_preprocess(f.read())
                             embedding = self.model.encode(text)
                             self.embeddings.append(embedding)
                             self.labels.append(label)
@@ -77,36 +78,44 @@ class ClassificatorModel:
 
         self.knn.fit(self.embeddings)
 
+        if self.knn.n_samples_fit_ < self.knn.n_neighbors:
+            self.knn.n_neighbors = self.knn.n_samples_fit_
+
         return None
 
-    def predict(self, path_to_dir: str) -> list[str]:
+    def predict(self, path_to_dir: str, show_neighbours: bool) -> list[str]:
         """
         Метод для предсказания меток классов новых документов. Получает на вход директорию с текстами.
         Предобрабатывает их и считает эмбеддинги. Далее проверка принадлежности к существующим классам происходит при
         помощи kNN.
+        :param show_neighbours: Если True - выведет в консоль название файла и количество соседей, разделенных по классам
+        и удовлетворяющих условиям.
         :param path_to_dir: Путь до папки с текстами.
         :return: Предсказанные метки классов в виде ["Метка класса1", "Метка класса2", ...]
         """
-        new_embeddings = []
-
-        for file in os.listdir(path_to_dir):
+        new_embeddings: list[torch.Tensor] = []
+        file_dir: list[str] = os.listdir(path_to_dir)
+        for file in file_dir:
             with open(f"{path_to_dir}/{file}", 'r', encoding='utf-8') as f:
-                text = spacy_tokenizer(f.read())
+                text = text_preprocess(f.read())
                 new_embeddings.append(self.model.encode(text))
 
-        # print(knn.n_samples_fit_)
-        predicted_labels = []
-        for new_embedding in new_embeddings:
-            classes_counter = {}
+        predicted_labels: list[str] = []
+
+        for i, new_embedding in enumerate(new_embeddings):
+            classes_counter: dict[str, int] = {}
             distances, indices = self.knn.kneighbors([new_embedding])
 
-            for i, distance in enumerate(distances[0]):
+            for j, distance in enumerate(distances[0]):
                 if distance <= self.threshold:
-                    current_label = self.labels[indices[0][i]]
+                    current_label = self.labels[indices[0][j]]
                     classes_counter[current_label] = classes_counter.get(current_label, 0) + 1
 
+            if show_neighbours:
+                print(f"Файл: {file_dir[i]}, количество соседей по классам: {classes_counter}")
+
             if classes_counter:
-                predicted_label = max(classes_counter, key=classes_counter.get)
+                predicted_label: str = max(classes_counter, key=classes_counter.get)
                 predicted_labels.append(predicted_label)
             else:
                 predicted_labels.append("Unknown")
@@ -120,10 +129,10 @@ class ClassificatorModel:
         :param true: Ground truth метки.
         :return: Доля верно предсказанных классов.
         """
-        pred_length = len(predicted)
-        true_length = len(true)
+        pred_length: int = len(predicted)
+        true_length: int = len(true)
 
-        counter = 0
+        counter: int = 0
 
         if pred_length != true_length:
             raise ValueError(
@@ -137,7 +146,7 @@ class ClassificatorModel:
             return f'Доля верно предсказанных классов: {round(counter / pred_length * 100, 2)}%'
 
 
-# model = ClassificatorModel("cointegrated/rubert-tiny2", 0.4, 3)
+# model = ClassificatorModel("cointegrated/rubert-tiny2", 0.2, 5)
 #
 # model.fit("texts_by_classes")
 #
@@ -145,6 +154,6 @@ class ClassificatorModel:
 #
 # print(predicted)
 #
-# true = ['News', 'DescriptionTexts', 'DescriptionTexts', 'DescriptionTexts', 'DescriptionTexts', 'News']
+# true = ['Россия', 'Россия', 'Мир', 'Россия', 'Unknown', 'Unknown']
 #
 # print(model.score(predicted, true))
