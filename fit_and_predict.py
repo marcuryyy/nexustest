@@ -49,9 +49,7 @@ class ClassificatorModel:
                                              "clustering": "Определи тематику и основную мысль текста."})
         self.embeddings: list = []
         self.labels: list = []
-        self.grouped_files: dict = {}
         self.threshold: int | float = threshold
-        self.dictionary_length: int = -1
         self.knn = NearestNeighbors(n_neighbors=neighbors_amount, metric='cosine')
 
     def fit(self, path_to_dir: str) -> None:
@@ -83,7 +81,7 @@ class ClassificatorModel:
 
         return None
 
-    def predict(self, path_to_dir: str, show_neighbours: bool) -> list[str]:
+    def predict(self, path_to_dir: str, show_neighbours: bool = False) -> list[str]:
         """
         Метод для предсказания меток классов новых документов. Получает на вход директорию с текстами.
         Предобрабатывает их и считает эмбеддинги. Далее проверка принадлежности к существующим классам происходит при
@@ -124,7 +122,8 @@ class ClassificatorModel:
 
     def score(self, predicted: list[str], true: list[str]) -> None | str:
         """
-        Метод для вычисления доли верно предсказанных меток классов.
+        Метод для вычисления доли верно предсказанных меток классов. Важно, чтобы в массиве true метки классов были
+        расставлены в том порядке, в каком идут документы в директории. Иначе, точность будет высчитана неверно.
         :param predicted: Предсказанные метки.
         :param true: Ground truth метки.
         :return: Доля верно предсказанных классов.
@@ -146,14 +145,14 @@ class ClassificatorModel:
             return f'Доля верно предсказанных классов: {round(counter / pred_length * 100, 2)}%'
 
 
-# model = ClassificatorModel("cointegrated/rubert-tiny2", 0.2, 5)
-#
-# model.fit("texts_by_classes")
-#
-# predicted = model.predict("texts_to_classify")
-#
-# print(predicted)
-#
-# true = ['Россия', 'Россия', 'Мир', 'Россия', 'Unknown', 'Unknown']
-#
-# print(model.score(predicted, true))
+model = ClassificatorModel("paraphrase-multilingual-MiniLM-L12-v2", 0.2, 5)
+
+model.fit("texts_by_classes")
+
+predicted = model.predict("texts_to_classify", True)
+
+print(predicted)
+
+true = ['Россия', 'Россия', 'Мир', 'Россия', 'Unknown', 'Unknown']
+
+print(model.score(predicted, true))
