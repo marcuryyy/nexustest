@@ -147,9 +147,9 @@ class ClassificatorModel:
 
 model = ClassificatorModel("paraphrase-multilingual-MiniLM-L12-v2", 0.2, 5)
 
-model.fit("texts_by_classes")
+model.fit("train")
 
-predicted = model.predict("texts_to_classify", True)
+predicted = model.predict("test", True)
 
 print(predicted)
 
