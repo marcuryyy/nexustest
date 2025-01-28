@@ -145,7 +145,7 @@ class ClassificatorModel:
             return f'Доля верно предсказанных классов: {round(counter / pred_length * 100, 2)}%'
 
 
-model = ClassificatorModel("paraphrase-multilingual-MiniLM-L12-v2", 0.2, 5)
+model = ClassificatorModel("cointegrated/rubert-tiny2", 0.2, 5)
 
 model.fit("train")
 
