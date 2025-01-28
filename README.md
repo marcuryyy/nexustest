@@ -1,7 +1,8 @@
 # Запуск кода
 1. Клонировать репозиторий ```git clone https://github.com/marcuryyy/nexustest```
-2. Установить requirements.txt ```pip install -r requirements.txt```
-3. В самом файле fit_and_predict.py снизу есть пример кода, как начать работу с классом.
+2. ```cd nexustest```
+3. Установить requirements.txt ```pip install -r requirements.txt```
+4. В самом файле fit_and_predict.py снизу есть пример кода, как начать работу с классом.
 
 **Важно**: Работает с файлами в формате .txt, предполагается, что текст в файлах на русском.
 
